@@ -45,9 +45,14 @@ void parse_channels(struct Channel *Ch, FILE **fp){
 //to it
 	int i = 0;
         char param1[10],param2[10],param3[10],timing[10],active_time[10];
+	char frequency[10];
 	char line[40];
 	while(fscanf(*fp,"%79[^\n]\n",line)==1)
-        	{
+        	{	if(strstr(line,"frequency")){
+				sscanf(line,"%s%s",param1,frequency);
+				Ch[i].frequency=atoi(frequency);
+				printf("actual frequency: %s\n",frequency);
+			}
                 	if(strstr(line,"active")){
                         	sscanf(line, "%s%s%s%s",param1,param2,param3,active_time);
                         	Ch[i].active_time=atoi(active_time);
@@ -68,7 +73,7 @@ void print_channels(struct Channel *Ch){
 
 	int i=0;
 	for(i=0;i<13;i++){
- 		printf("active time: %d && busy time : %d\n",Ch[i].active_time,Ch[i].busy_time);
+ 		printf(" frequency: %d active time: %d && busy time : %d\n",Ch[i].frequency,Ch[i].active_time,Ch[i].busy_time);
 	}
 }
 
