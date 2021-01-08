@@ -12,21 +12,19 @@ struct Channel
 
 void parse_channels(struct Channel *, FILE **);
 void print_channels(struct Channel *);
-void find_best_channel(struct Channel *, struct Channel *);
-void print_best_channel(struct Channel );
 
 int main(void)
 {
 	FILE *fp;
-	char *myfile="test.txt";
+	char *mycommand="iw wlan0 survey dump";
 	char c;
 	int i=0;
 	struct Channel Ch[13];
-	struct Channel best_channel;
+
 	//read the file that needs to be checked for frequency/ other information
-	if( 0 == (fp=(FILE*)fopen(myfile,"r")))
+	if( 0 == (fp=(FILE*)popen(mycommand,"r")))
 	{
-		perror("fopen() failed");
+		perror("popen() failed");
 		exit(EXIT_FAILURE);
 	}
 
@@ -36,8 +34,6 @@ int main(void)
 	//function to print the channels
 	print_channels(Ch);
 
-	find_best_channel(Ch, &best_channel);
-	print_best_channel(best_channel);
 	//close the file pointer
 	fclose(fp);
 
@@ -55,17 +51,17 @@ void parse_channels(struct Channel *Ch, FILE **fp){
         	{	if(strstr(line,"frequency")){
 				sscanf(line,"%s%s",param1,frequency);
 				Ch[i].frequency=atoi(frequency);
-//				printf("actual frequency: %s\n",frequency);
+				printf("actual frequency: %s\n",frequency);
 			}
                 	if(strstr(line,"active")){
                         	sscanf(line, "%s%s%s%s",param1,param2,param3,active_time);
                         	Ch[i].active_time=atoi(active_time);
-//                        	printf("actual active time: %s\n",active_time);
+                        	printf("actual active time: %s\n",active_time);
                 	}
                 	if(strstr(line,"busy")){
                         	sscanf(line,"%s%s%s%s",param1,param2,param3,timing);
                         	Ch[i].busy_time=atoi(timing);
-//                        	printf("actual busy_time : %d\n",atoi(timing));
+                        	printf("actual busy_time : %d\n",atoi(timing));
                         	i+=1;
         		}
         }
@@ -81,24 +77,3 @@ void print_channels(struct Channel *Ch){
 	}
 }
 
-
-
-void find_best_channel(struct Channel *Ch, struct Channel *best_channel){
-	// this function finds the best channel from the list of scanned channels
-	int lowest_busy_time=Ch[0].busy_time;
-	int channel_flag=0;
-	for(int i=0;i<13;i++)
-	{
-		if(lowest_busy_time > Ch[i].busy_time)
-		{
-			lowest_busy_time=Ch[i].busy_time;
-			channel_flag=i;
-		}
-	}
-			//assigns the designated channel to the best_channel struct
-	*best_channel = Ch[channel_flag];
-}
-
-void print_best_channel(struct Channel Ch){
-	printf("%d is the best channel with %d busy time and %d active time \n ", Ch.frequency,Ch.busy_time,Ch.active_time);
-}
