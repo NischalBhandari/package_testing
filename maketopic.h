@@ -1,0 +1,1 @@
+int appendtopics(char *mac_addr, char *argv, char *topic);
