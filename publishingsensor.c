@@ -1,14 +1,7 @@
 #include <mosquitto.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#ifndef WIN32
-#  include <unistd.h>
-#else
-#  include <process.h>
-#  define snprintf sprintf_s
-#endif
-
+#include <time.h>
+#include "getmac.h"
+#include "mqtt_main.h"
 
 int get_frequency(void)
 { 
@@ -19,19 +12,31 @@ int get_frequency(void)
 
 
 /* This function pretends to read some data from a sensor and publish it.*/
-void publish_sensor_data(struct mosquitto *mosq, char *argv)
-{
-	char payload[20];
-	int temp;
+void publish_sensor_data(struct mosquitto *mosq, char *argv, struct Channel *Ch)
+{//	struct Channel payload;
+	char data[data_buffer_size];
+	// time_t raw_time;
+	// struct tm *timeinfo;
+	// time(&raw_time);
+	// timeinfo=localtime(&raw_time);
+	char mac_addr[20];
+	memset(mac_addr,0,20);
 	int rc;
-	char topic[20];
+	char topic[30];
 	strcpy(topic,argv);
-	printf("The topic is %s\n",topic);
-	/* Get our pretend data */
-	temp = get_frequency();
-	/* Print it to a string for easy human reading - payload format is highly
-	 * application dependent. */
-	snprintf(payload, sizeof(payload), "%d", temp);
+	get_mac(mac_addr);
+	get_frequency();
+	memset(data,0,data_buffer_size);
+	for(int i=0;i<13;i++){
+		snprintf(data,sizeof(data),"%s %d %d %d\n",mac_addr,Ch[i].frequency,Ch[i].active_time,Ch[i].busy_time);
+	//	printf(" frequency: %d active time: %d && busy time : %d\n",Ch[i].frequency,Ch[i].active_time,Ch[i].busy_time);
+		rc = mosquitto_publish(mosq, NULL,topic, strlen(data), data, 2, false);
+		if(rc != MOSQ_ERR_SUCCESS){
+			fprintf(stderr, "Error publishing: %s\n", mosquitto_strerror(rc));
+		}
+
+	}
+	//snprintf(data, sizeof(data), "%s-%d-%d-%s",mac_addr,(*payload).frequency,(*payload).channel,asctime(timeinfo));
 
 	/* Publish the message
 	 * mosq - our client instance
@@ -42,9 +47,5 @@ void publish_sensor_data(struct mosquitto *mosq, char *argv)
 	 * qos = 2 - publish with QoS 2 for this example
 	 * retain = false - do not use the retained message feature for this message
 	 */
-	rc = mosquitto_publish(mosq, NULL,topic, strlen(payload), payload, 2, false);
-	printf("published data with data %s\n",payload);
-	if(rc != MOSQ_ERR_SUCCESS){
-		fprintf(stderr, "Error publishing: %s\n", mosquitto_strerror(rc));
-	}
+
 }

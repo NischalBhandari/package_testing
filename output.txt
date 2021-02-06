@@ -1,0 +1,1 @@
+channel 5 (2432 MHz), width: 20 MHz, center1: 2432 MHz

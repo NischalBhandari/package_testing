@@ -1,33 +1,13 @@
-#include <signal.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 
-#ifndef WIN32
-#  include <unistd.h>
-#else
-#  include <process.h>
-#  define snprintf sprintf_s
-#endif
-
-#include <mosquitto.h>
-#include <sqlite3.h>
-#include "publishingsensor.h"
-#include "getmac.h"
-#include "maketopic.h"
-#include "sqliteprepare.h"
+#include "mqtt_main.h"
 
 
-#define mqtt_host "localhost"
-#define mqtt_broker "192.168.11.9"
-#define mqtt_port 1883
-#define db_query "INSERT INTO mqtt_log (topic,payload) VALUES (?,?)"
 
 char *sql= "DROP TABLE IF EXISTS mqtt_log;"
-"CREATE TABLE mqtt_log(topic TEXT, payload TEXT);";
+"CREATE TABLE mqtt_log(topic TEXT, payload TEXT, frequency INTEGER, mac_addr TEXT, active_time INTEGER);";
 sqlite3 *connection;
 sqlite3_stmt *res;
-char mac_addr[20];
+struct Channel Ch[13];
 char *err_msg = 0;
 char mytopic[30];
 	static int run = 1;
@@ -78,19 +58,29 @@ void connect_callback(struct mosquitto *mosq, void *obj, int result){
 }
 
 void message_callback(struct mosquitto *mosq, void *obj, const struct mosquitto_message *message){
-	char data[30];
-	char topic[30];
+	char data[data_buffer_size];
+	char topic[topic_buffer_size];
+	int frequency;
+	char mac_addr[30];
+	int active_time;
+	int busy_time;
 	// there was a problem in sqlite due to direct assignment as maybe due to '' so we
 	//used characters to denote the const void* value 
-	memcpy(data,message->payload,30);
-	memcpy(topic,message->topic,10);
+	memcpy(data,message->payload,data_buffer_size);
+	memcpy(topic,message->topic,topic_buffer_size);
+	// start parsing here
+	sscanf(data,"%s %d %d %d",mac_addr,&frequency,&active_time,&busy_time);
+	printf(" This is message callback %s %d %d %d \n",mac_addr,frequency,active_time,busy_time);
 	// sqlite3_bind_blob(sqlite3 stmt*, int index, const void* value , int n, void (*) (void*))
-	
-	sqlite3_bind_text(res,2,data,10,SQLITE_STATIC);
-	sqlite3_bind_text(res,1,topic,30,SQLITE_STATIC);
+	//sqlite3_bind_text(res,2,data,data_buffer_size,SQLITE_STATIC);
+	sqlite3_bind_text(res,1,topic,topic_buffer_size,SQLITE_STATIC);
+	sqlite3_bind_int(res,3,frequency);
+	sqlite3_bind_text(res,4,mac_addr,sizeof(mac_addr),SQLITE_STATIC);
+	sqlite3_bind_int(res,5,active_time);
 
-	printf("The message is %s  && topic is %s\n",data,topic);
+	printf("\nThe message received is  %s  && topic is %s\n",data,topic);
 	printf("\n");
+
 	int rc=sqlite3_step(res);
 	if(rc == SQLITE_DONE){
 		printf("added to the database: \n");
@@ -102,9 +92,13 @@ void message_callback(struct mosquitto *mosq, void *obj, const struct mosquitto_
 }
 
 int main(int argc, char *argv[]){
-	get_mac(mac_addr);
-	appendtopics(mac_addr,argv[1],mytopic);
+	struct Channel my_channel;
+	get_all_channels(Ch);
+	//appendtopics(mac_addr,argv[1],mytopic);
+	getCurrentChannel(&my_channel);
+	createtopic(argv[1], mytopic);
 
+	
 	//creates a child process which can keep listening to the topics 
 if(fork()==0){
 
@@ -232,7 +226,9 @@ else
 	 * In this case we know it is 1 second before we start publishing.
 	 */
 		while(1){
-			publish_sensor_data(mosq,mytopic);
+
+			publish_sensor_data(mosq,mytopic,Ch);
+			sleep(10);
 		}
 
 	mosquitto_lib_cleanup();

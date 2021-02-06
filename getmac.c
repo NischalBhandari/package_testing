@@ -18,7 +18,6 @@ int get_mac( char *mac_addr){
 		point = point + 1;
 	}
 	fclose(fp);
-	printf("The final mac address is %s\n",mac_addr);
 	return 0;
 
 

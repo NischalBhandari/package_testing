@@ -5,8 +5,15 @@ LDFLAGS=./mosquitto-2.0.1/lib/libmosquitto.so.1 -lsqlite3
 
 all : mqtt_main
 
-mqtt_main : mqtt_main.o publishingsensor.o getmac.o maketopic.o sqliteprepare.o
+mqtt_main : mqtt_main.o publishingsensor.o getmac.o maketopic.o sqliteprepare.o findchannel.o channelinfo.o
 	${CC} $^ -o $@ ${LDFLAGS}
+
+channelinfo.o : channelinfo.c
+	${CC} -c $^ -o $@ ${CFLAGS}
+
+
+findchannel.o : findchannel.c
+	${CC} -c $^ -o $@ ${CFLAGS}
 
 sqliteprepare.o : sqliteprepare.c
 	${CC} -c $^ -o $@ ${CFLAGS}
